@@ -1,56 +1,42 @@
-# Die Basis fÃ¼r den octo_client stammt von https://github.com/grpc/grpc
+# octo_client.py
 import argparse
 from datetime import datetime
 import os
 import grpc
-import json
-import _credentials  # Importiert das Modul fÃ¼r Authentifizierungs-Credentials.
+import json  # Stellen Sie sicher, dass das json-Modul importiert ist
+import _credentials
 import octopyplug.octo_pb2 as octo_pb2
 import octopyplug.octo_pb2_grpc as octo_pb2_grpc
-from classes.loghandler import (
-    LogHandler,
-)  # Importiert eine benutzerdefinierte LogHandler-Klasse.
+from classes.loghandler import LogHandler
 import classes.const as const
 
-# Initialisierung des Loggers fÃ¼r das Logging von Nachrichten.
 log_handler = LogHandler(os.path.basename(__file__)[:-3])
 logger = log_handler.get_logger()
-_SERVER_ADDR_TEMPLATE = "localhost:%d"  # Vorlage fÃ¼r die Server-Adresse.
-_CLIENT_REQUEST_TYPES = ["SendMessage", "GetFormat"]  # Definierte Anfragetypen.
+_SERVER_ADDR_TEMPLATE = "192.168.178.48:%d"
+_CLIENT_REQUEST_TYPES = ["SendMessage", "GetFormat", "History"]
 
 
 def create_client_channel(addr: str) -> grpc.Channel:
     """
-    Erstellt einen sicheren gRPC-Kanal mit Authentifizierung Ã¼ber SSL und Zugriffstokens.
-    Dies wird verwendet, um eine verschlÃ¼sselte und sichere Verbindung zum Server zu gewÃ¤hrleisten.
+    Erstellt einen sicheren gRPC-Kanal mit Authentifizierung über SSL und Zugriffstokens.
+    Dies wird verwendet, um eine verschlüsselte und sichere Verbindung zum Server zu gewährleisten.
 
     Args:
         addr (str): Die Serveradresse im Format "host:port".
 
     Returns:
-        grpc.Channel: Ein gRPC-Kanalobjekt fÃ¼r die sichere Kommunikation.
+        grpc.Channel: Ein gRPC-Kanalobjekt für die sichere Kommunikation.
 
     Raises:
-        Exception: Allgemeine Fehler wÃ¤hrend der Kanalerstellung werden geloggt und weitergereicht.
+        Exception: Allgemeine Fehler während der Kanalerstellung werden geloggt und weitergereicht.
     """
     try:
-        # token = os.getenv("ACCESS_TOKEN", "default_token")
-        # logger.info(f"Using access token: {token}")
-        # call_credentials = grpc.access_token_call_credentials("test_token")
-        # channel_credential = grpc.ssl_channel_credentials(_credentials.ROOT_CERTIFICATE)
-        # composite_credentials = grpc.composite_channel_credentials(
-        #     channel_credential, call_credentials
-        # )
-        # channel = grpc.secure_channel(
-        #     addr, composite_credentials
-        # )  # , options=(("grpc.enable_http_proxy", 0),)
-
-        # logger.info(f"Secure channel created to {addr}")
-        # return channel
-
-        credentials = grpc.ssl_channel_credentials(_credentials.LOCALHOST_CERTIFICATE)
-
-        return grpc.secure_channel(addr, credentials)
+        credentials = grpc.ssl_channel_credentials(_credentials.ROOT_CERTIFICATE)
+        call_credentials = grpc.access_token_call_credentials("test_token")
+        composite_credentials = grpc.composite_channel_credentials(
+            credentials, call_credentials
+        )
+        return grpc.secure_channel(addr, composite_credentials)
     except Exception as e:
         logger.error(f"Failed to create client channel: {e}")
         raise
@@ -58,7 +44,7 @@ def create_client_channel(addr: str) -> grpc.Channel:
 
 def is_file_recent(file_path: str, days: int = 5) -> bool:
     """
-    ÃœberprÃ¼ft, ob eine Datei innerhalb der letzten `days` Tage modifiziert wurde.
+    Überprüft, ob eine Datei innerhalb der letzten `days` Tage modifiziert wurde.
     Diese Funktion wird genutzt, um zu entscheiden, ob aktuelle oder veraltete Daten verwendet werden.
 
     Args:
@@ -66,7 +52,7 @@ def is_file_recent(file_path: str, days: int = 5) -> bool:
         days (int): Anzahl der Tage, innerhalb derer die Datei als aktuell betrachtet wird.
 
     Returns:
-        bool: True, wenn die Datei kÃ¼rzlich modifiziert wurde, sonst False.
+        bool: True, wenn die Datei kürzlich modifiziert wurde, sonst False.
 
     Raises:
         Exception: Fehler beim Zugriff auf das Dateisystem werden geloggt.
@@ -85,10 +71,10 @@ def is_file_recent(file_path: str, days: int = 5) -> bool:
         return False
 
 
-def run(channel: grpc.Channel, json_message: dict, type: str) -> any:
-    """
-    FÃ¼hrt eine gRPC-Anfrage durch, basierend auf dem spezifizierten Anfragetyp.
-    Behandelt spezifische Aktionen wie das Senden von Nachrichten oder das Abrufen von Datenformaten.
+def run(channel: grpc.Channel, json_msg: dict, type: str) -> any:
+    stub = octo_pb2_grpc.MessageServiceStub(channel)
+    metadata = [("authorization", "Bearer test_token")]
+    response = None  # Initialisieren Sie die Variable response
 
     Args:
         channel (grpc.Channel): Der gRPC-Kanal.
@@ -100,33 +86,43 @@ def run(channel: grpc.Channel, json_message: dict, type: str) -> any:
 
     Raises:
         grpc.RpcError: Spezifische gRPC Fehler werden erfasst und geloggt.
-        Exception: Allgemeine Fehler wÃ¤hrend der AusfÃ¼hrung werden erfasst und geloggt.
+        Exception: Allgemeine Fehler während der Ausführung werden erfasst und geloggt.
     """
     stub = octo_pb2_grpc.MessageServiceStub(channel)
     json_string = json.dumps(json_message)
     logger.info(f"Running {type} request with data: {json_string}")
     try:
         if type == "SendMessage":
-            # response = stub.OctoMessage(octo_pb2.OctoRequest(json_message=json_string))
+            json_string = json.dumps(json_msg)
+            logger.info(f"Running {type} request with data: {json_string}")
             request = octo_pb2.OctoRequest(json_message=json_string)
-            try:
-                response = stub.OctoMessage(request)
-                print(response.json_message)
-            except grpc.RpcError as e:
-                print(f"RPC failed: {e.status}, {e.details}")
+            response = stub.OctoMessage(request, metadata=metadata)
+            logger.info(f"Received response: {response.json_message}")
+            print(response.json_message)
+
+        elif type == "History":
+            json_string = json.dumps(json_msg)
+            logger.info(f"Running {type} request with data: {json_string}")
+            request = octo_pb2.OctoRequest(json_message=json_string)
+            response = stub.OctoMessage(request, metadata=metadata)
+            logger.info(f"Received response: {response.json_message}")
+            print(response.json_message)
+
         elif type == "GetFormat":
             if not is_file_recent("dataschema.json"):
-                response = stub.GetDataFormat(octo_pb2.OctoRequest())
+                response = stub.GetDataFormat(octo_pb2.OctoRequest(), metadata=metadata)
                 with open("dataschema.json", "w") as file:
                     file.write(response.json_message)
                 logger.info("Updated dataschema.json from server.")
             else:
                 with open("dataschema.json", "r") as file:
                     response = octo_pb2.OctoResponse(json_message=file.read())
-        logger.info(f"Received response: {response}")
-        return response
+                logger.info(f"Received response: {response.json_message}")
+            return response
+
     except grpc.RpcError as e:
-        logger.error(f"RPC error during '{type}' request: {e}")
+        logger.error(f"RPC failed with status: {e.code()}, details: {e.details()}")
+        print(f"RPC failed: {e.code()}, {e.details()}")
         return None
     except Exception as e:
         logger.error(f"Unexpected error during '{type}' request: {e}")
@@ -135,11 +131,11 @@ def run(channel: grpc.Channel, json_message: dict, type: str) -> any:
 
 def main():
     """
-    Hauptfunktion des Programms, die beim AusfÃ¼hren des Scripts aktiviert wird.
-    Verarbeitet die Kommandozeilenargumente und fÃ¼hrt die gRPC-Anfrage durch.
+    Hauptfunktion des Programms, die beim Ausführen des Scripts aktiviert wird.
+    Verarbeitet die Kommandozeilenargumente und führt die gRPC-Anfrage durch.
 
     Raises:
-        Exception: Erfasst und loggt alle Fehler, die wÃ¤hrend der HauptausfÃ¼hrung auftreten.
+        Exception: Erfasst und loggt alle Fehler, die während der Hauptausführung auftreten.
     """
     parser = argparse.ArgumentParser(
         description="Client to communicate with OctoServer"
@@ -160,14 +156,14 @@ def main():
     args = parser.parse_args()
 
     try:
-        # with create_client_channel(_SERVER_ADDR_TEMPLATE % args.port) as channel:
-        # AusfÃ¼hren der RPC-Anfrage
-        # data = Sensorplug.SensorPlug.convert()
         address = f"{_SERVER_ADDR_TEMPLATE % args.port}"
         channel = create_client_channel(address)
         response = run(channel, args.json_message, args.type)
         logger.info(f"Final response: {response}")
         print(response)
+    except KeyboardInterrupt:
+        logger.info("Client was interrupted manually (SIGINT).")
+        print("Client was interrupted manually.")
     except Exception as e:
         logger.error(f"Error in main function: {e}")
 

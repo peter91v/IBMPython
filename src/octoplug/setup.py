@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="octoplug",
-    version="0.2",
+    version="0.1",
     description="OctoPyPlug BAC2",
     author="Varga Peter",
     author_email="varga.pter91@gmail.com",

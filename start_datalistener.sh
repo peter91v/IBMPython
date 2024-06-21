@@ -5,5 +5,5 @@
 
 # Starte den gRPC-Server
 ./OctoVenv/Scripts/activate
-python ./src/octoplug/octopyplug/octo_server.py --port 5000
+python.exe ./src/octoplug/classes/datalistener.py
 

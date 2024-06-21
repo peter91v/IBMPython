@@ -3,7 +3,6 @@
 # Setze die Ausführungsrechte für das Skript
 # chmod +x start_server.sh
 
-# Starte den gRPC-Server
+# Starte den OctoPlugRESTService
 ./OctoVenv/Scripts/activate
-python ./src/octoplug/octopyplug/octo_server.py --port 5000
-
+python ./src/octoplug/rest_service/octoplugrestapi.py

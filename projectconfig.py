@@ -58,6 +58,6 @@ def update_project_path(filepath):
 if __name__ == "__main__":
     # Pfad zur const.py Datei
     const_file_path = os.path.join(
-        os.path.dirname(__file__), "src/octoplug/classes/const.py"
+        os.path.dirname(__file__), "src\\octoplug\\classes\\const.py"
     )
     update_project_path(const_file_path)

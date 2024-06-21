@@ -1,42 +1,48 @@
-# octo_server.py
+# Die Basis für den octo_server stammt von https://github.com/grpc/grpc
 import argparse
 from concurrent import futures
 import contextlib
+import logging
+import json
 import grpc
 import os
-import signal
-import sys
-import json
-import _credentials
-import octopyplug.octo_pb2 as octo_pb2
-import octopyplug.octo_pb2_grpc as octo_pb2_grpc
+import _credentials  # Import von benutzerdefinierten Anmeldeinformationen für SSL/TLS.
+import octopyplug.octo_pb2 as octo_pb2  # Import der generierten Protokollklassen.
+import octopyplug.octo_pb2_grpc as octo_pb2_grpc  # Import der generierten gRPC-Dienste.
 import classes.const as const
-from classes.loghandler import LogHandler
-import classes.persistent.sensorlst as SensorLst
-import classes.persistent.sensor as Sensor
-import classes.base.databasecontroller as DBController
+from classes.loghandler import (
+    LogHandler,
+)  # Importiert eine benutzerdefinierte Klasse für Logging.
 
-_LISTEN_ADDRESS_TEMPLATE = "0.0.0.0:%d"
+# Server-Adresse und Authentifizierungskonfiguration.
+_LISTEN_ADDRESS_TEMPLATE = "localhost:%d"
 _AUTH_HEADER_KEY = "authorization"
 _AUTH_HEADER_VALUE = "Bearer test_token"
 
+# Logger-Konfiguration für das Erfassen von Systemmeldungen.
 log_handler = LogHandler(os.path.basename(__file__)[:-3])
 logger = log_handler.get_logger()
 
-db_controller = DBController.DatabaseController()
-
 
 class SignatureValidationInterceptor(grpc.ServerInterceptor):
+    """
+    Ein Interceptor für gRPC-Server, der die Authentifizierung von eingehenden Anfragen überprüft.
+    Verwendet HTTP-Headers zur Bestätigung der Authentizität der Anfrage.
+    """
+
     def __init__(self):
         super().__init__()
+        # Handler, der aufgerufen wird, wenn die Authentifizierung fehlschlägt.
         self._abort_handler = grpc.unary_unary_rpc_method_handler(
             self._abort_with_unauthenticated
         )
 
     def _abort_with_unauthenticated(self, request, context):
+        """Beendet die Anfrage mit einem Authentifizierungsfehler."""
         context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid signature")
 
     def intercept_service(self, continuation, handler_call_details):
+        """Überprüft, ob der Authentifizierungsheader in den Metadaten der Anfrage vorhanden ist."""
         try:
             metadata = dict(handler_call_details.invocation_metadata)
             if metadata.get(_AUTH_HEADER_KEY) == _AUTH_HEADER_VALUE:
@@ -48,32 +54,20 @@ class SignatureValidationInterceptor(grpc.ServerInterceptor):
 
 
 class MessageService(octo_pb2_grpc.MessageServiceServicer):
+    """
+    Implementiert die gRPC-Dienste, die von den Clients verwendet werden, um Nachrichten zu senden und Datenformate abzurufen.
+    """
+
     def OctoMessage(self, request, context):
-        # sensor_instance = Sensor.sensor()
-        # sensor_instance.STANDORTID = (102,)
-        # sensor_instance.TEMPERATURE = (25.1,)
-        # sensor_instance.save()
-        # sensor_instance.save_to_json(const.DataPath)
-        sensorlist = SensorLst.sensorlst()
-
+        """Empfängt Nachrichten von Clients und gibt eine Bestätigung zurück."""
         json_message = json.loads(request.json_message)
-        logger.info("json_message: %s", json_message)
-
-        sensorlist.populate_from_json(request.json_message)
-        # sensorlist.process_and_save_historical_data(request.json_message)
-        logger.info("sensorlst: %s", sensorlist)
-
-        sensorlist.save_all()
-        count = sensorlist.count()
-        logger.info("count: %s", count)
-        # sensorlist.load_all()
-        # sensorlist.save_all_to_json(const.DataPath)
         logger.info("Received message from client: %s", json_message)
         response = octo_pb2.OctoResponse(json_message="Message received successfully")
         logger.info(f"Sending response back to client: {response.json_message}")
         return response
 
     def GetDataFormat(self, request, context):
+        """Gibt ein standardisiertes JSON-Datenformat zurück."""
         try:
             json_format = {
                 "id": "",
@@ -96,6 +90,10 @@ class MessageService(octo_pb2_grpc.MessageServiceServicer):
 
 @contextlib.contextmanager
 def run_server(port):
+    """
+    Konfiguriert und startet den gRPC-Server.
+    Verwendet SSL/TLS zur Sicherung der Kommunikation und setzt Interceptoren zur Überprüfung der Authentizität.
+    """
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10),
         interceptors=(SignatureValidationInterceptor(),),
@@ -116,12 +114,10 @@ def run_server(port):
 
 
 def main():
-    def handle_sigint(sig, frame):
-        logger.info("Server was interrupted manually (SIGINT).")
-        sys.exit(0)
-
-    signal.signal(signal.SIGINT, handle_sigint)
-
+    """
+    Hauptfunktion, die den Server initialisiert und auf Client-Anfragen wartet.
+    Die Konfiguration des Ports erfolgt über Kommandozeilenargumente.
+    """
     parser = argparse.ArgumentParser(description="Starts a secure gRPC server.")
     parser.add_argument(
         "--port",
