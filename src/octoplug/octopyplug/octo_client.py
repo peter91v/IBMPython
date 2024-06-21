@@ -18,17 +18,17 @@ _CLIENT_REQUEST_TYPES = ["SendMessage", "GetFormat", "History"]
 
 def create_client_channel(addr: str) -> grpc.Channel:
     """
-    Erstellt einen sicheren gRPC-Kanal mit Authentifizierung über SSL und Zugriffstokens.
-    Dies wird verwendet, um eine verschlüsselte und sichere Verbindung zum Server zu gewährleisten.
+    Erstellt einen sicheren gRPC-Kanal mit Authentifizierung Ã¼ber SSL und Zugriffstokens.
+    Dies wird verwendet, um eine verschlÃ¼sselte und sichere Verbindung zum Server zu gewÃ¤hrleisten.
 
     Args:
         addr (str): Die Serveradresse im Format "host:port".
 
     Returns:
-        grpc.Channel: Ein gRPC-Kanalobjekt für die sichere Kommunikation.
+        grpc.Channel: Ein gRPC-Kanalobjekt fÃ¼r die sichere Kommunikation.
 
     Raises:
-        Exception: Allgemeine Fehler während der Kanalerstellung werden geloggt und weitergereicht.
+        Exception: Allgemeine Fehler wÃ¤hrend der Kanalerstellung werden geloggt und weitergereicht.
     """
     try:
         credentials = grpc.ssl_channel_credentials(_credentials.ROOT_CERTIFICATE)
@@ -44,7 +44,7 @@ def create_client_channel(addr: str) -> grpc.Channel:
 
 def is_file_recent(file_path: str, days: int = 5) -> bool:
     """
-    Überprüft, ob eine Datei innerhalb der letzten `days` Tage modifiziert wurde.
+    ÃœberprÃ¼ft, ob eine Datei innerhalb der letzten `days` Tage modifiziert wurde.
     Diese Funktion wird genutzt, um zu entscheiden, ob aktuelle oder veraltete Daten verwendet werden.
 
     Args:
@@ -52,7 +52,7 @@ def is_file_recent(file_path: str, days: int = 5) -> bool:
         days (int): Anzahl der Tage, innerhalb derer die Datei als aktuell betrachtet wird.
 
     Returns:
-        bool: True, wenn die Datei kürzlich modifiziert wurde, sonst False.
+        bool: True, wenn die Datei kÃ¼rzlich modifiziert wurde, sonst False.
 
     Raises:
         Exception: Fehler beim Zugriff auf das Dateisystem werden geloggt.
@@ -86,7 +86,7 @@ def run(channel: grpc.Channel, json_msg: dict, type: str) -> any:
 
     Raises:
         grpc.RpcError: Spezifische gRPC Fehler werden erfasst und geloggt.
-        Exception: Allgemeine Fehler während der Ausführung werden erfasst und geloggt.
+        Exception: Allgemeine Fehler wÃ¤hrend der AusfÃ¼hrung werden erfasst und geloggt.
     """
     stub = octo_pb2_grpc.MessageServiceStub(channel)
     json_string = json.dumps(json_message)
@@ -131,11 +131,11 @@ def run(channel: grpc.Channel, json_msg: dict, type: str) -> any:
 
 def main():
     """
-    Hauptfunktion des Programms, die beim Ausführen des Scripts aktiviert wird.
-    Verarbeitet die Kommandozeilenargumente und führt die gRPC-Anfrage durch.
+    Hauptfunktion des Programms, die beim AusfÃ¼hren des Scripts aktiviert wird.
+    Verarbeitet die Kommandozeilenargumente und fÃ¼hrt die gRPC-Anfrage durch.
 
     Raises:
-        Exception: Erfasst und loggt alle Fehler, die während der Hauptausführung auftreten.
+        Exception: Erfasst und loggt alle Fehler, die wÃ¤hrend der HauptausfÃ¼hrung auftreten.
     """
     parser = argparse.ArgumentParser(
         description="Client to communicate with OctoServer"
