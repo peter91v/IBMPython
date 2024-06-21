@@ -1,0 +1,24 @@
+from abc import ABC, abstractmethod
+
+
+class PlugAbstract(ABC):
+    @abstractmethod
+    def PrepareData(self, data: str):
+        """
+        Bereitet den Bekommene daten auf
+        """
+        pass
+
+    @abstractmethod
+    def LoadDataStucture(self):
+        """
+        LoadDataStucture
+        """
+        pass
+
+    @abstractmethod
+    def method3(self):
+        """
+        Abstrakte Methode 3.
+        """
+        pass

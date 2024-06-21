@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package octo;
+
+// Definition des Dienstes für Nachrichten
+service MessageService {
+  // Sendet eine Nachricht
+  rpc OctoMessage (OctoRequest) returns (OctoResponse) {}
+
+  // Ruft das Datenformat ab
+  rpc GetDataFormat (GetDataRequest) returns (OctoResponse) {}
+}
+
+// Die Anforderungsnachricht enthält die JSON-Nachricht
+message OctoRequest {
+  string json_message = 1;
+}
+
+// Die Antwortnachricht enthält die JSON-Nachricht
+message OctoResponse {
+  string json_message = 1;
+  string test = 2;
+}
+
+// Die Anforderungsnachricht für das Datenformat
+message GetDataRequest {}
+
